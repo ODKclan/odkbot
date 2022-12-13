@@ -16,10 +16,17 @@ $nssm_exe = $root_folder + "\nssm.exe"
 
 # Recover settings from the settings.json file
 $s = Get-Content -Raw settings.json | ConvertFrom-Json
-$service_user = $s.service_user
-$service_password = $s.service_password
 $service_name = $s.service_name
 $nssm_version = $s.nssm_version
+
+# Recover optional credentials for the windows service
+try {
+	$service_user = $s.service_user
+	$service_password = $s.service_password
+} catch {
+	$service_user = $null
+	$service_password = $null
+}
 
 # Check if nssm is installed; if not, download and put it in the root folder
 If (-Not (Test-Path($nssm_exe)))
@@ -59,7 +66,10 @@ try {
     & $nssm_exe set $service_name AppStdout $root_folder\log.txt
     & $nssm_exe set $service_name AppStderr $root_folder\log.txt
     & $nssm_exe set $service_name AppEnvironmentExtra PYTHONPATH=$python_path
-    & $nssm_exe set $service_name ObjectName $service_user $service_password
+
+    if ($service_user -and $service_password) {
+        & $nssm_exe set $service_name ObjectName $service_user $service_password
+    }
     
     echo ""
     echo "[OK] Installed!"

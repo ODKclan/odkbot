@@ -49,7 +49,7 @@ def run() -> None:
     """This is the function that the script will run."""
 
     try:
-        with open("credentials.json", "r") as f:
+        with open("settings.json", "r") as f:
             data = json.load(f)
             token = data["token"]
     except FileNotFoundError:

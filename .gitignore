@@ -1,2 +1,5 @@
 /credentials.json
+/settings.json
 **/__pycache__/*
+log.txt
+nssm.exe

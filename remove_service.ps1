@@ -17,7 +17,7 @@ $nssm_exe = $root_folder + "\nssm.exe"
 
 # Recover settings from the settings.json file
 $s = Get-Content -Raw settings.json | ConvertFrom-Json
-$service_user = $s.service_user
+$service_name = $s.service_name
 $nssm_version = $s.nssm_version
 
 # Check if nssm is installed; if not, download and put it in the root folder

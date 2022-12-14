@@ -1,5 +1,6 @@
 import json
 import logging
+import subprocess
 from telegram import Update, ParseMode
 from telegram.ext import Updater, CallbackContext, CommandHandler
 
@@ -8,6 +9,10 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 odklog = logging.getLogger("odkbot")
+
+
+def get_git_revision_short_hash() -> str:
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
 
 
 def sanitize_str(str: str) -> str:
@@ -47,6 +52,8 @@ def radio_check(update: Update, context: CallbackContext) -> None:
 
 def run() -> None:
     """This is the function that the script will run."""
+    odklog.info("-------------------------------")
+    odklog.info(f"Starting ODKBot version {get_git_revision_short_hash()}")
 
     try:
         with open("settings.json", "r") as f:
@@ -61,7 +68,7 @@ def run() -> None:
         print("[ERR] The 'credentials.json' file should contain a key called 'token'.")
         exit(1)
 
-    odklog.info("Credentials file read. Starting bot...")
+    odklog.info("Credentials file read.")
 
     updater = Updater(token=token, use_context=True)
     dispatcher = updater.dispatcher

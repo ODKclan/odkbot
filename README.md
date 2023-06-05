@@ -34,7 +34,7 @@ Create a file called `settings.json`:
 Run:
 
 ```console
-poetry run odkbot
+poetry run odkbot_prod
 ```
 
 or, on Windows:
@@ -49,7 +49,7 @@ Follow this template in the `settings.json` file:
 
 ```json
 {
-  "token": "your-telegram-token-goes-here",
+  "token_prod": "your-telegram-token-goes-here",
   "service_name": "ODKBot",
   "service_user": ".\\user",
   "service_password": "password",
@@ -79,4 +79,16 @@ If you need to remove the service, launch:
 
 ```console
 .\remove_service.ps1
+```
+
+### Devs
+
+If a `token_dev` key is present in `settings.json` the bot can be run with `poetry run odkbot_dev` to launch the dev
+version of the bot.
+
+Stringa usata per assegnare i comandi a BotFather:
+
+```
+radiocheck - Esegui un check presenze
+help - Mostra un messaggio di aiuto
 ```

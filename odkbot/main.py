@@ -1,73 +1,62 @@
-import json
 import logging
-import subprocess
-from functools import reduce
-from telegram import Update, ParseMode
-from telegram.ext import Updater, CallbackContext, CommandHandler
+import json
 
-# Prepare the logger
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    CommandHandler,
+    filters,
+    MessageHandler,
+)
+
+from odkbot.utils import (
+    get_git_revision_short_hash,
+    HelpPrinter,
+    add_command,
+    send_msg,
+)
+
+#
+# LOGGER
+#
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 odklog = logging.getLogger("odkbot")
-command_help_messages = []
 
 
-def add_command_help_message(command: str, description: str) -> None:
-    command_help_messages.append(f"`{command}`\n*>* {description}")
+#
+# HANDLERS
+#
 
 
-def get_git_revision_short_hash() -> str:
-    return (
-        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
-        .decode("ascii")
-        .strip()
-    )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await send_msg("Ci manca la sicura!", update, context)
 
 
-def sanitize_str(string: str) -> str:
-    for char in ["/", "!", ".", "<", ">"]:
-        string = string.replace(char, f"\\{char}")
-    return string
-
-
-def start(update: Update, context: CallbackContext) -> None:
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,  # type:ignore
-        text="Ci manca la sicura!",
-    )
-
-
-def print_help(update: Update, context: CallbackContext) -> None:
+async def print_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     odklog.info("help")
-    help_header = "Bravo! L'uomo saggio cerca la conoscenza e pensa prima di agire... aspetta un momento... sicuro di essere un ODK?!\n"
-    help_msg = sanitize_str(
-        reduce(lambda x, y: x + "\n" + y, command_help_messages, help_header)
-    )
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,  # type:ignore
-        parse_mode=ParseMode.MARKDOWN_V2,
-        text=help_msg,
-    )
+    await send_msg(HelpPrinter.build_help_message(), update, context)
     odklog.info("help - Given!")
 
 
-def radio_check(update: Update, context: CallbackContext) -> None:
+async def radio_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        odklog.warn("radiocheck_no_title")
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,  # type:ignore
-            parse_mode=ParseMode.MARKDOWN_V2,
-            text=sanitize_str(
-                "*BOOM!* \U0001F4A5 Hai perso una granata per caso?\nComunque, ho bisogno di una domanda per funzionare, ad esempio:\n```\n/radiocheck stasera 21.30?```"
-            ),
+        odklog.warning("radiocheck_no_title")
+        await send_msg(
+            "*BOOM!* \U0001F4A5 Hai perso una granata per caso?\nComunque, ho bisogno di una domanda per funzionare,"
+            " ad esempio:\n```\n/radiocheck stasera 21.30?```",
+            update,
+            context,
         )
-        odklog.warn("radiocheck_no_title - info message sent.")
+        odklog.warning("radiocheck_no_title - info message sent.")
     else:
         odklog.info("radiocheck")
         question = " ".join(context.args).capitalize()
-        context.bot.send_poll(
+        await context.bot.send_poll(
             chat_id=update.effective_chat.id,  # type:ignore
+            message_thread_id=update.effective_message.message_thread_id,
             question=question,
             options=["\u2705 Sì", "\u2B55 No", "\u2754 Forse"],
             is_anonymous=False,
@@ -75,44 +64,74 @@ def radio_check(update: Update, context: CallbackContext) -> None:
         odklog.info("radiocheck - Poll sent!")
 
 
-def run() -> None:
-    """This is the function that the script will run."""
+async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await send_msg(
+        "Non capisco! Usa  `/help`  per vedere la lista dei comandi che supporto.",
+        update,
+        context,
+    )
+
+
+#
+# ENTRYPOINTS
+#
+def run_dev():
+    """This is the function that the odkbot_dev script will run."""
+    run("dev")
+
+
+def run_prod():
+    """This is the function that the odkbot_prod script will run."""
+    run("prod")
+
+
+def run(env: str = "prod"):
+    """Launch the bot with the given environment."""
+
     version = get_git_revision_short_hash()
     odklog.info("-------------------------------")
     odklog.info(f"Starting ODKBot version {version}")
 
+    HelpPrinter.set_version(version)
+
     try:
         with open("settings.json", "r") as f:
             data = json.load(f)
-            token = data["token"]
+            token = data[f"token_{env}"]
     except FileNotFoundError:
         print(
-            "[ERR] You need a 'credentials.json' file with a key called 'token'. This should be your bot api token."
+            "[ERR] You need a 'settings.json' file with a key called 'token'. This should be your bot api token."
         )
         exit(1)
     except KeyError:
-        print("[ERR] The 'credentials.json' file should contain a key called 'token'.")
+        print("[ERR] The 'settings.json' file should contain a key called 'token'.")
         exit(1)
 
     odklog.info("Credentials file read.")
 
-    updater = Updater(token=token, use_context=True)
-    dispatcher = updater.dispatcher
+    application = ApplicationBuilder().token(token).build()
 
     start_handler = CommandHandler("start", start)
-    dispatcher.add_handler(start_handler)
+    application.add_handler(start_handler)
 
-    radio_check_handler = CommandHandler("radiocheck", radio_check)
-    dispatcher.add_handler(radio_check_handler)
-    add_command_help_message(
-        "/radiocheck <domanda>",
-        "Crea un sondaggio con la _domanda_ fornita, offrendo come possibili risposte _sì_, _no_, _forse_",
+    add_command(
+        application=application,
+        name="radiocheck",
+        hook=radio_check,
+        help_header="/radiocheck <domanda>",
+        help_message="Crea un sondaggio con la _domanda_ fornita, offrendo come possibili risposte _sì_, _no_, _forse_",
     )
 
-    help_handler = CommandHandler("help", print_help)
-    dispatcher.add_handler(help_handler)
-    add_command_help_message("/help", "Mostra questo messaggio")
+    add_command(
+        application=application,
+        name="help",
+        hook=print_help,
+        help_header="/help",
+        help_message="Mostra questo messaggio",
+    )
 
-    command_help_messages.append(f"\n_ODKBot versione {version}_")
+    # This handler MUST be registered last to catch all unknown commands
+    unknown_handler = MessageHandler(filters.COMMAND, unknown)
+    application.add_handler(unknown_handler)
 
-    updater.start_polling()
+    application.run_polling()

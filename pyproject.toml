@@ -10,14 +10,15 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-odkbot = 'odkbot.main:run'
+odkbot_prod = 'odkbot.main:run_prod'
+odkbot_dev = 'odkbot.main:run_dev'
 
 [tool.poetry.dependencies]
 python = "^3.8"
-python-telegram-bot = "^13.15"
+python-telegram-bot = "^20.3"
 
 [tool.poetry.dev-dependencies]
-black = "^22.12.0"
+black = "^23.3.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

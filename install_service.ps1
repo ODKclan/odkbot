@@ -60,7 +60,7 @@ try {
 
     # Install the service using nssm
     $service_cmd = $scripts_folder + "\python.exe"
-    $service_args = $scripts_folder + "\odkbot"
+    $service_args = $scripts_folder + "\odkbot_prod"
     & $nssm_exe install $service_name $service_cmd $service_args
     & $nssm_exe set $service_name AppDirectory $root_folder
     & $nssm_exe set $service_name AppStdout $root_folder\log.txt

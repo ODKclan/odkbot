@@ -61,7 +61,7 @@ Follow this template in the `settings.json` file:
 Open a powershell console as Administrator and launch:
 
 ```console
-.\install_service.ps1
+.\install_service.ps1 -env prod
 ```
 
 This will download `nssm.exe` and install, enable and start a Windows service for the bot using [nssm](https://nssm.cc/).

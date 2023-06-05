@@ -5,7 +5,7 @@
 
 # Check if the script is running as Administrator
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    echo "Not running as administrator!"
+    Write-Output "Not running as administrator!"
     exit(1)
 }
 
@@ -23,7 +23,7 @@ $nssm_version = $s.nssm_version
 # Check if nssm is installed; if not, download and put it in the root folder
 If (-Not (Test-Path($nssm_exe)))
 {
-    echo "nssm not found, installing"
+    Write-Output "nssm not found, installing"
     
     $nssm_temp_folder = $root_folder + "\temp"
     $nssm_url = "https://nssm.cc/release/nssm-" + $nssm_version + ".zip"
@@ -37,8 +37,9 @@ If (-Not (Test-Path($nssm_exe)))
     Remove-Item -Force -Recurse -Path $nssm_temp_folder
 }
 
-# Check if the service is already installed 
-try {
+# Check if the service is already installed
+$out = cmd /c "$nssm_exe status ODKBot" '2>&1'
+if ($?) {
     $out = (& $nssm_exe status ODKBot)
     
     # If the service is not stopped...
@@ -50,11 +51,12 @@ try {
 
     & $nssm_exe remove $service_name confirm
 
-    echo ""
-    echo "[OK] UNINSTALLED!"
+    Write-Output ""
+    Write-Output "[OK] UNINSTALLED!"
 
-} catch {
+}
+else {
     $err_msg = "[ERR] Service '" + $service_name + "' is not installed!"
-    echo $err_msg
+    Write-Output $err_msg
     exit(1)
 }

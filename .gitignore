@@ -4,3 +4,6 @@
 log.txt
 nssm.exe
 .idea
+vagrant/ssh_config
+vagrant/.vagrant
+vagrant/mounted

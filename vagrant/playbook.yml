@@ -1,0 +1,129 @@
+---
+- hosts: all
+
+  vars:
+    vm_hostname: "win-odkbot"
+    folder_name: "odkbot"
+    folder: "C:\\{{ folder_name }}"
+    rename_sound_device_folder: "{{ folder }}\\vagrant\\rename-sound-device" 
+    powershell_path: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+    desktop: "C:\\Users\\vagrant\\Desktop"
+    source_link: "{{ desktop }}\\odkbot.lnk"
+    link: "('{{ folder }}', '{{ source_link }}', '{{ folder }}')"
+
+  tasks:
+
+    #
+    # INSTALL DEPENDENCIES
+    #
+    - name: Install dependencies.
+      win_chocolatey:
+        name:
+          # needed
+          - python38
+          - rsync
+          - git
+          # nice to have
+          - notepadplusplus
+          - vim
+
+    - name: Check if poetry is installed.
+      ansible.windows.win_powershell:
+        script: |
+          poetry --version
+      changed_when: false
+      register: out
+
+    - name: Install poetry if needed.
+      ansible.windows.win_powershell:
+        script: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+      when: out.error | length > 0
+
+    - name: Check the default ssh shell.
+      ansible.windows.win_powershell:
+        script: |
+          Get-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell
+      changed_when: false
+      register: out
+
+    - name: Set the default ssh shell.
+      ansible.windows.win_powershell:
+        script: |
+          New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "{{ powershell_path }}" -PropertyType String -Force
+        error_action: "stop"
+      when: out.error|length > 0 and 'Property DefaultShell does not exist' in out.error[0].exception.message
+
+    #
+    # CODEBASE SYNC
+    #
+    # copy module is SLOW and can't ignore paths. syncronize does not work over winrm.
+    # so: use rsync via ssh directly to quickly copy over needed files.
+    #
+    # While programming, use make watch to keep the guest folder in sync!
+    #
+    - name: Prepare the code and ssh home folder.
+      win_file:
+        path: "{{ folder }}"
+        state: directory
+
+    - name: Check if the codebase is up-to-date.
+      command: make check
+      delegate_to: localhost
+      changed_when: false
+      failed_when: false
+      register: out
+
+    - name: Sync code with rsync.
+      command: make sync
+      when: out.stdout != "0"
+      delegate_to: localhost
+
+    #
+    # INSTALL PROJECT DEPENDENCIES
+    #
+    - name: Check if the env is there.
+      win_stat:
+        path: "{{ folder }}\\.venv"
+      changed_when: false
+      register: out
+
+    - name: Install the project.
+      ansible.windows.win_powershell:
+        script: |
+          .\vagrant\scripts\RunScriptAs.ps1 -user "vagrant" -script .\vagrant\scripts\install.ps1
+        chdir: "{{ folder }}"
+      register: r_install
+      when: not out.stat.exists
+
+    - debug:
+        msg: "{{ r_install }}"
+      when: not out.stat.exists
+
+
+    #
+    # ADD SHORTCUTS
+    #
+    - name: Check if the shortcuts are already there.
+      win_stat:
+        path: "{{ source_link }}"
+      changed_when: false
+      failed_when: false
+      register: out
+
+    - name: Add all needed shortcuts.
+      ansible.windows.win_powershell:
+        script: |
+          $link = {{ link }}
+          $WScriptObj = New-Object -ComObject ("WScript.Shell")
+          $shortcut = $WscriptObj.CreateShortcut($link[1])
+          $shortcut.TargetPath = $link[0]
+          $shortcut.WorkingDirectory = $link[2]
+          $shortcut.Save()
+          $o = new-object -com shell.application
+          $o.Namespace($link[0]).Self.InvokeVerb("pintohome")
+        chdir: "{{ folder }}"
+        error_action: "stop"
+      register: out
+      when: not out.stat.exists

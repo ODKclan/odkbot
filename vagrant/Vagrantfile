@@ -1,0 +1,42 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# 
+# Needed plugins:
+# - vagrant-libvirt
+# - vagrant-winrm (should be installed by default)
+#
+# Needed on the host:
+# - pip install pywinrm
+#
+
+name = "odkbot"
+title = "win-" + name
+
+Vagrant.configure("2") do |config|
+
+  config.vm.define title
+
+  config.vm.hostname = title
+
+  config.vm.box = "peru/windows-10-enterprise-x64-eval"
+
+  config.winssh.shell = "powershell"
+
+  config.vm.provider :libvirt do |domain|
+    domain.memory = 4096
+    domain.cpus = 4
+    domain.nested = true
+    domain.storage_pool_name = "vm"
+    domain.title = title
+  end
+
+  config.vm.provision "ansible", run: "always" do |ansible|
+    ansible.playbook = "playbook.yml"
+  end
+
+  # Make sure that the ssh_config is not left around after destroy
+  config.trigger.after :destroy do |trigger|
+    trigger.run = { inline: "rm -Rf ssh_config" }
+  end
+
+end

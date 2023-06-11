@@ -25,9 +25,14 @@ Create a file called `settings.json`:
 
 ```json
 {
-  "token": "your-telegram-token-goes-here"
+  "token_prod": "your-telegram-token-goes-here",
+  "support_nicks": ["User123"]
 }
 ```
+
+`token_prod` is mandatory, it's the string given by Telegram's BotFather. `support_nicks` is an optional list of Telegram
+user that will be pinged if a bug is encountered.
+
 
 ### Launch the bot
 
@@ -45,11 +50,10 @@ or, on Windows:
 
 ### Install as a Windows service
 
-Follow this template in the `settings.json` file:
+Add these fields to the `settings.json` file:
 
 ```json
 {
-  "token_prod": "your-telegram-token-goes-here",
   "service_name": "ODKBot",
   "service_user": ".\\user",
   "service_password": "password",
@@ -86,7 +90,7 @@ If you need to remove the service, launch:
 If a `token_dev` key is present in `settings.json` the bot can be run with `poetry run odkbot_dev` to launch the dev
 version of the bot.
 
-Stringa usata per assegnare i comandi a BotFather:
+String used to assign commands to BotFather:
 
 ```
 radiocheck - Esegui un check presenze

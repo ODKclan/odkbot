@@ -14,6 +14,8 @@ class State:
     """Container used to describe the global application state."""
 
     settings_file_name: str = "settings.json"
+    changelog_file_name: str = "changelog.md"
+    changelog: str = "empty"
     logger: Logger
     token: str
     version: str
@@ -51,10 +53,16 @@ class State:
             )
             exit(1)
 
+        try:
+            with open(cls.changelog_file_name, "r") as f:
+                cls.changelog = f.read()
+        except FileNotFoundError:
+            cls.logger.warning(f"Changelog file '{cls.changelog_file_name}' not found!")
+
     @classmethod
     def add_command_help_message(cls, command: str, description: str) -> None:
         """Save the command help message in the global state, useful to print them all later."""
-        cls.help_messages.append(f"`{command}`\n*>* {description}")
+        cls.help_messages.append(f"*>* `{command}`\n{description}")
 
     @classmethod
     def _get_bot_version(cls) -> str:
@@ -71,7 +79,7 @@ class State:
 
 def sanitize_str(string: str) -> str:
     """Make sure no forbidden character gets printed."""
-    for char in ["/", "!", ".", "<", ">", "(", ")"]:
+    for char in ["/", "!", ".", "<", ">", "(", ")", "#", "-"]:
         string = string.replace(char, f"\\{char}")
     return string
 
@@ -103,6 +111,7 @@ async def send_msg(message: str, update: Update, context: ContextTypes.DEFAULT_T
         message_thread_id=update.effective_message.message_thread_id,
         parse_mode=ParseMode.MARKDOWN_V2,
         text=sanitize_str(message),
+        disable_web_page_preview=True,
     )
 
 

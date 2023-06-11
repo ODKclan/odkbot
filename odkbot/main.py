@@ -24,6 +24,8 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 odklog = logging.getLogger("odkbot")
+# don't show at INFO level all the HTTP requests logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 #
@@ -35,11 +37,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @handle_handler_errors
 async def print_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    odklog.info("help")
+    odklog.info("help - Requested")
     message = (
         "Bravo! L'uomo saggio cerca la conoscenza e pensa prima di agire... aspetta un momento..."
         " sicuro di essere un ODK?!\n\n"
-        + "\n".join(State.help_messages)
+        + "\n\n".join(State.help_messages)
         + f"\n\n_ODKBot versione {State.version}_"
     )
     await send_msg(message, update, context)
@@ -48,7 +50,7 @@ async def print_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @handle_handler_errors
 async def radio_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    odklog.info("radiocheck")
+    odklog.info("radiocheck - Requested")
 
     if not context.args:
         question = "Stasera?"
@@ -66,7 +68,19 @@ async def radio_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @handle_handler_errors
+async def changelog(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    odklog.info("changelog - Requested")
+    await send_msg(
+        State.changelog,
+        update,
+        context,
+    )
+    odklog.info("changelog - Sent")
+
+
+@handle_handler_errors
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    odklog.warning("unknown command detected")
     await send_msg(
         "Non capisco! Usa  `/help`  per vedere la lista dei comandi che supporto.",
         update,
@@ -112,6 +126,18 @@ def run(env: str = "prod"):
                 description="Crea un sondaggio con la _domanda_ fornita, offrendo come possibili risposte _sì_,"
                 " _no_, _forse_",
             ),
+        ],
+    )
+
+    add_command(
+        application=application,
+        command="changelog",
+        hook=changelog,
+        command_usage_list=[
+            CommandUsage(
+                usage="/changelog",
+                description="Elenca le ultime modifiche al bot",
+            )
         ],
     )
 

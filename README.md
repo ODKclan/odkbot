@@ -94,5 +94,6 @@ String used to assign commands to BotFather:
 
 ```
 radiocheck - Esegui un check presenze
+changelog - Elenca le ultime modifiche al bot
 help - Mostra un messaggio di aiuto
 ```

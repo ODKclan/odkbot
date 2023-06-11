@@ -34,7 +34,7 @@ class State:
         token_key_name = f"token_{env}"
 
         try:
-            with open(cls.settings_file_name, "r") as f:
+            with open(cls.settings_file_name, "r", encoding="utf-8") as f:
                 data = json.load(f)
             # mandatory
             cls.token = data[token_key_name]
@@ -54,7 +54,7 @@ class State:
             exit(1)
 
         try:
-            with open(cls.changelog_file_name, "r") as f:
+            with open(cls.changelog_file_name, "r", encoding="utf-8") as f:
                 cls.changelog = f.read()
         except FileNotFoundError:
             cls.logger.warning(f"Changelog file '{cls.changelog_file_name}' not found!")
